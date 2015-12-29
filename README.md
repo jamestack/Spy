@@ -3,7 +3,7 @@ Spy是一个轻量级的爬虫框架，开发灵活并且运行飞快。<br/>
 A lightweight web crawler,flexible and runing fast.
 
 ## 进展
-beta v1.0 基本功能
+beta v1.0 基本功能<br/>
 beta v1.1 修正了多线程队列算法
 
 ## Demo
