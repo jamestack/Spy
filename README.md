@@ -1,4 +1,4 @@
-# Spy Web Crawler Framework
+# Spy Web Crawler Package
 Spy是一个轻量级的爬虫框架，开发灵活并且运行飞快。<br/>
 A lightweight web crawler,flexible and runing fast.
 
