@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 )
@@ -73,7 +74,7 @@ func NewSpy() *Spy {
 	return &newSpy
 }
 
-func Add(spy *Spy, url string, option *Option) *Response {
+func Add(spy *Spy, url string, option *Option) {
 	rs := &Response{}
 	rs.spy = spy
 	rs.option = option
@@ -96,6 +97,16 @@ func Add(spy *Spy, url string, option *Option) *Response {
 		rs.nextNode = nil
 		headNode.backNode = rs
 	}
+}
+
+func Sub(spy *Spy, url string, option *Option) *Response {
+	rs := &Response{}
+	rs.spy = spy
+	rs.option = option
+	rs.option.Url = url
+	rs.Cookies = map[string]string{}
+	rs.Data = map[string]string{}
+	runNode(rs, true)
 	return rs
 }
 
@@ -106,7 +117,6 @@ func downLoader(rs *Response) error {
 	if rs.option.Method == "" {
 		rs.option.Method = "Get"
 	}
-	var method string
 	var resp *http.Response
 	var err error
 	switch strings.ToLower(rs.option.Method) {
@@ -122,7 +132,6 @@ func downLoader(rs *Response) error {
 		return errors.New("Url Method Type Fail.")
 	}
 	resp.Header.Set("Cookie", rs.option.Cookie)
-	fmt.Println(method)
 	for k, v := range rs.option.Header {
 		resp.Header.Set(k, v)
 	}
@@ -156,39 +165,62 @@ func getNode() *Response {
 	return node
 }
 
-func runNode(node *Response) {
+func runNode(node *Response, isSub bool) {
 	err := downLoader(node)
 	if err != nil {
-		fmt.Println(node.option.Url, "Open Error.", err)
+		if isSub {
+			fmt.Println("Spy:SubURL \""+node.option.Url+"\"", "Open Error =>", err)
+		} else {
+			fmt.Println("Spy:URL \""+node.option.Url+"\"", "Open Error =>", err)
+		}
+
+	} else {
+		if node.spy.filter != nil {
+			node.spy.filter(node)
+		}
+	}
+
+	if isSub == false {
+		if node.spy.savedata != nil {
+			node.spy.savedata(node)
+		}
+		for processNum <= maxProcess {
+			newNode := getNode()
+			if newNode != nil {
+				waitgroup.Add(1)
+				processNum++
+				go runNode(newNode, false)
+			} else {
+				break
+			}
+		}
+		processNum--
 		waitgroup.Done()
-		return
-	}
-	if node.spy.filter != nil {
-		node.spy.filter(node)
-	}
-	if node.spy.savedata != nil {
-		node.spy.savedata(node)
-	}
-	waitgroup.Done()
-	newNode := getNode()
-	if newNode != nil {
-		waitgroup.Add(1)
-		go runNode(newNode)
+		runtime.Goexit()
 	}
 }
 
 var waitgroup sync.WaitGroup
+var processNum int = 0
+var maxProcess int
 
 func Run(process int) {
+	if process > 0 {
+		maxProcess = process
+	} else {
+		fmt.Println("Spy:process number err.")
+		return
+	}
 	for i := 0; i < process; i++ {
 		node := getNode()
 		if node != nil {
 			waitgroup.Add(1)
-			go runNode(node)
+			processNum++
+			go runNode(node, false)
 		} else {
 			break
 		}
 	}
 	waitgroup.Wait()
-	fmt.Println("Success!")
+	fmt.Println("Spy:Success!")
 }
