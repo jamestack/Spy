@@ -46,8 +46,6 @@ func (w *Response) FindAllStringSubmatch(regstr string) [][]string {
 }
 
 func (w *Response) GetHeader(key string) string {
-	for w.resp == nil {
-	}
 	return w.resp.Header.Get(key)
 }
 
@@ -183,6 +181,7 @@ func runNode(node *Response, isSub bool) {
 	if isSub == false {
 		if node.spy.savedata != nil {
 			node.spy.savedata(node)
+			node.resp.Body.Close()
 		}
 		for processNum <= maxProcess {
 			newNode := getNode()
